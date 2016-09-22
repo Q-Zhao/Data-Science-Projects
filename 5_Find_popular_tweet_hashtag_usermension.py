@@ -1,66 +1,39 @@
-from nltk.tokenize import word_tokenize
-from nltk.corpus import stopwords
+import twitter
+import sys
+import io
 import json
-from collections import OrderedDict
-import string
+import os
 from prettytable import PrettyTable
 
-# Define words we do not want to show in frequent list
-def unwanted():
-    unwanted = list(stopwords.words('english'))
-    unwanted += list(string.punctuation)
-    unwanted += ['https', 'http', '...', '…',"''",'``','iphone', 'Iphone', 'iphone7', 'Iphone7',"'s"]
-    return unwanted 
+def load_data(filename):
+    f = open(filename,'r', encoding='utf-8').read()
+    content_json = json.loads(f)
+    return content_json
 
-# Find the most frequent n words in tweets json data
-def frequent_words(data, n):
-    unwanted_words = unwanted()
-    counts = dict() # {"word1": 253, "word2": 13}
-    for tweet in data:
-        if "text" in tweet.keys() and tweet["lang"]=="en":
-            sentence = tweet["text"]
-            words = word_tokenize(sentence)
-            for word in words:
-                if word.lower() not in unwanted_words:
-                    counts[word] = counts.get(word, 0)+1
-    sorted_counts = sorted(counts.items(), key=lambda t: t[1], reverse = True)
-    with open("frequency.txt", 'w', encoding='utf-8') as f:
-        f.write(str(sorted_counts[:n]))
-    return sorted_counts[:n]
-
-# Find tweets retweeted more than n times
-def popular_tweet(statuses, n):
-    popular = []
+def count_tweet_hashtags_user_mentions(statuses):
+    hashtags, user_mentions= {}, {}
     for tweet in statuses:
-        if "retweet_count" in tweet.keys() and tweet["retweet_count"] > n:
-            popular.append(tweet)
-    return popular
-
-# Find tweets with an overall retweeted numbers more than n times
-def popular_retweeted_count(statuses, n):
-    popular = {}
-    for tweet in statuses:
-        if "retweeted_status" in tweet.keys() and len(tweet["retweeted_status"])!=0 and tweet["lang"] == "en" \
-            and "retweet_count" in tweet["retweeted_status"].keys():
-                if tweet["retweeted_status"]["retweet_count"] > n and "text" in tweet.keys() and len(tweet["text"])!=0:
-                    if tweet["text"] not in popular.values(): 
-                        popular[tweet["retweeted_status"]["retweet_count"]] = tweet["text"]
-    sorted_popular = sorted(popular.items(), key=lambda t: t[0], reverse = True)
-    return sorted_popular
+        if "entities" in tweet.keys() and len(tweet["entities"])!=0:
+            if "hashtags" in tweet["entities"] and len(tweet["entities"]["hashtags"])!=0:
+                for hashtag in tweet["entities"]["hashtags"]:
+                    hashtags[hashtag["text"]] = hashtags.get(hashtag["text"], 0)+1          
+            if "user_mentions" in tweet["entities"] and len(tweet["entities"]["user_mentions"])!=0:
+                for user_mension in tweet["entities"]["user_mentions"]:
+                    user_mentions[user_mension['screen_name']] = user_mentions.get(user_mension['screen_name'],0)+1
+    top_10_hashtags = sorted(hashtags.items(), key=lambda t: t[1], reverse=True)[:10]
+    top_10_user_mentions = sorted(user_mentions.items(), key=lambda t: t[1], reverse=True)[:10]
+    return top_10_hashtags, top_10_user_mentions
 
 
 
-tweets_all = load_data("combined_all.json")
-frequent_words_tweets_all = frequent_words(tweets_all, 30)
+content = load_data('combined_9_10_0916.json')
+hashtags, user_mentions = count_tweet_hashtags_user_mentions(content)
 
-# print out results as table
-pt_word_frequency = PrettyTable(field_names = ['Words', 'Frequency'])
-[pt_word_frequency.add_row(row) for row in frequent_words_tweets_all]
-print(pt_word_frequency)
+pt_hashtags = PrettyTable(field_names = ['Top 10 hashtags', 'hashtags #'])
+[ pt_hashtags.add_row(row) for row in hashtags]
+pt_user_mentions = PrettyTable(field_names = ['Top 10 user_mentions', 'user_mentions #'])
+[ pt_user_mentions.add_row(row) for row in user_mentions]
 
-# find tweets with an overall retweeted number greater than 5000
-popular_retweeted_count = popular_retweeted_count(content, 5000)
-for tweet in sorted(popular_retweeted_count, reverse=True):
-    print("retweeted_number: ", tweet[0], "\t","tweet_text: ", tweet[1])
+print(pt_hashtags)
+print(pt_user_mentions)
 
-    
