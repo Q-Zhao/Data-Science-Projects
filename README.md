@@ -1,5 +1,5 @@
 # Data Analysis: iPhone 7 on Twitter
-###Labels: Data Science, Data Analysis, Twitter API, iPhone 7
+Labels: Data Science, Data Analysis, Twitter API, iPhone 7
 
 ##Brief Description:
 
